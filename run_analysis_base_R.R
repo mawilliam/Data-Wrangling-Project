@@ -1,5 +1,5 @@
-# Set the working directory * change for Github*
-setwd("C:/Users/mark__000/Documents/Springboard/UCI HAR Dataset")
+# Set the working directory
+setwd("C:/Users/mark__000/Documents/Springboard/Data-Wrangling-Project/UCI HAR Dataset")
 
 # Read in the raw data
 activity_labels <- read.table("activity_labels.txt",stringsAsFactors = F)
@@ -39,7 +39,6 @@ fused_data <- merge(fused_data,activity_labels,by.x="ActivityLabel",by.y="ID")
 fused_split <- split(fused_data, fused_data[,c("Subject","ActivityLabel")])
 
 # Apply avg to each column
-# This is not quite working yet
 fused_apply <- lapply(fused_split, function(x){
   col_mean <- colMeans(x[,setdiff(colnames(x),c("Subject","ActivityLabel","ActivityName"))])
   df <- data.frame(t(col_mean))
