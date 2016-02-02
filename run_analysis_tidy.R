@@ -26,8 +26,10 @@ colnames(y_train) <- c("ActivityLabel")
 colnames(y_test) <- c("ActivityLabel")
 
 # Extract mean and std dev columns
-X_train_sel <- X_train %>% select(contains("mean..",ignore.case=F),contains("std..",ignore.case=F))
-X_test_sel <- X_test %>% select(contains("mean..",ignore.case=F),contains("std..",ignore.case=F))
+X_train_sel <- X_train %>% 
+  select(contains("mean..",ignore.case=F),contains("std..",ignore.case=F))
+X_test_sel <- X_test %>% 
+  select(contains("mean..",ignore.case=F),contains("std..",ignore.case=F))
 
 # Fuse train and test data together including subject and activity label
 fused_train <- bind_cols(subject_train,y_train,X_train_sel)
@@ -38,5 +40,6 @@ fused_data <- bind_rows(fused_train, fused_test)
 fused_data <- inner_join(fused_data,activity_labels,by=c("ActivityLabel"="ID"))
 
 # Compute avg of each variable for each group of subject activity
-final_data <- fused_data %>% group_by(Subject,ActivityLabel,ActivityName) %>% 
+final_data <- fused_data %>% 
+  group_by(Subject,ActivityLabel,ActivityName) %>% 
   summarise_each(funs(mean))

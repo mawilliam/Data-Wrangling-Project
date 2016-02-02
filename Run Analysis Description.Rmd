@@ -1,0 +1,99 @@
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+setwd("C:/Users/mark__000/Documents/Springboard/Data-Wrangling-Project")
+library(tidyr)
+library(dplyr)
+```
+
+# Springboard Data Wrangling Project Solution
+In this project, we are manipulating a data set to create tidy data. We are using the [Samsung Galaxy S Smartphone](http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones) dataset as well as the `tidyr` and `dplyr` packages. By reading the description of the data, we realize that the data is split between many files including the variable names. Furthermore, we learn that the raw inertia data from the cell phone has already been pre-processed to define a set of features. Let's load and explore all of the necessary data sets.
+
+The 'activity\_labels.txt' file provides a list of the possible outcomes. We can convert our dataframe to a `tbl()` to have it output in a user-friendly manner. As you can see, there are six observations of two variables. Since there is not a header on any of the files, we will define variable names. The first column contains integers and the second column contains the name of the activity. If you are familiar with databases, this dataframe is similar to a table and the integer column is the primary key.
+```{r, message=FALSE}
+activity_labels <- read.table("UCI HAR Dataset/activity_labels.txt",stringsAsFactors = FALSE)
+activity_labels <- tbl_df(activity_labels)
+str(activity_labels)
+colnames(activity_labels) <- c("ID","ActivityName")
+activity_labels
+```
+The 'features.txt' file is similar to the 'activity\_labels.txt' file in that it contains two variables, one of which can be thought of as a primary key. The character variable contains the name of all of the feature variables. You can find more information about the features in the 'features\_info.txt' file. Note, that many of the features are calculated by taking the mean, standard deviation, or other statistics. For example, the first feature is named "tBodyAcc-mean()-X" which indicates it is the mean of the body acceleration in the X-direction. 
+```{r, message=FALSE}
+features <- read.table("UCI HAR Dataset/features.txt",stringsAsFactors = FALSE)
+features <- tbl_df(features)
+colnames(features) <- c("ID","Feature")
+```
+We can look at the first and last few rows of the dataframe by using `head()` and `tail()`.
+```{r, message=FALSE}
+head(features, 7)
+tail(features)
+```
+The data is already split into training and testing sets. The 'X\_train.txt' file contains the data for all of the features. You can confirm this by looking at the global environment and see there are 561 variables in the dataframe. The 'y\_train.txt' files contains the outcome variable. The 'subject\_train.txt' file contains an ID of the subject who was doing the corresponding activity. You can see that each of the files has 7,352 observations. As a result, each observation contains the feature data to predict the activity for each subject.
+```{r, message=FALSE}
+X_train <- read.table("UCI HAR Dataset/train/X_train.txt")
+X_train <- tbl_df(X_train)
+y_train <- read.table("UCI HAR Dataset/train/y_train.txt")
+y_train <- tbl_df(y_train)
+subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt")
+subject_train <- tbl_df(subject_train)
+```
+First, we can explore the outcome variable.
+```{r, message=FALSE}
+str(y_train)
+table(y_train)
+```
+As shown above, the 'y_train.txt' file contains the key associated with each of the activity labels.  The table counts how many observations of each activity are contained in the training data.
+
+Next, we will define the variables based on what we learned. We use the `make.names` function to create valid variable names using the given feature names. We add the `unique = TRUE` argument to ensure there aren't any repeated column names.
+```{r, message=FALSE}
+colnames(X_train) <- make.names(features$Feature, unique = TRUE)
+colnames(y_train) <- c("ActivityLabel")
+colnames(subject_train) <- c("Subject")
+```
+The test data is set up in the same manner as the training data, except there are fewer observations.
+```{r, echo=FALSE, message=FALSE}
+X_test <- read.table("UCI HAR Dataset/test/X_test.txt")
+X_test <- tbl_df(X_test)
+colnames(X_test) <- make.names(features$Feature, unique = TRUE)
+y_test <- read.table("UCI HAR Dataset/test/y_test.txt")
+y_test <- tbl_df(y_test)
+colnames(y_test) <- c("ActivityLabel")
+subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt")
+subject_test <- tbl_df(subject_test)
+colnames(subject_test) <- c("Subject")
+```
+
+
+As you can see, there are 561 features. We are only interested in those features which are calculated using the mean and standard deviation of the raw data. Before extracting the columns, we should try to determine how many variables we should expect to meet these conditions. By looking at the 'features\_info.txt' file, it appears like there are 33 variables of raw data that we calculate the mean and standard deviation for. Next, we need to determine how the `make.names` function transformed the 'features.txt' file into variable names for our features.
+```{r}
+head(colnames(X_train))
+```
+As shown, "mean()" and "std()" were transformed into "mean.." and "std.." to become syntactically correct. Now, we can extract only the features we are interested in.
+```{r}
+X_train_sel <- X_train %>% 
+  select(contains("mean..",ignore.case=FALSE),contains("std..",ignore.case=FALSE))
+X_test_sel <- X_test %>% 
+  select(contains("mean..",ignore.case=FALSE),contains("std..",ignore.case=FALSE))
+```
+
+Next, we need to combine our data sets into one. We need to combine our training and testing sets together as well as combining the subject and activity identifiers with the feature data.
+```{r}
+fused_train <- bind_cols(subject_train,y_train,X_train_sel)
+fused_test <- bind_cols(subject_test,y_test,X_test_sel)
+fused_data <- bind_rows(fused_train, fused_test)
+```
+
+We now have a tidy data set in which we can build predictive models and do further exploration. However, we are going to merge the activity names into the data set. 
+```{r}
+fused_data <- inner_join(fused_data,activity_labels,by=c("ActivityLabel"="ID"))
+```
+
+Finally, we can manipulate our data further. Below, we are going to calculate the average value of each feature for every subject-activity pair. As you can see, it is difficult to display a results in a friendly manner when there are 66 features, but `tbl()` does the best job. Most of the variables are not shown, but they are listed as well as their data type.
+```{r}
+final_data <- fused_data %>% 
+  group_by(Subject,ActivityLabel,ActivityName) %>% 
+  summarise_each(funs(mean))
+final_data
+```
+
+In this project, we have manipulated many related data sets into the form necessary for us to do further exploration and analysis. We can now train and test predictive models or create compelling visualizations or perform other pertinent analyses. For more examples of data wrangling using `tidyr` and `dplyr`, see the [slides](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/DataWranglingWithR.p
+df) from a webinar by Garrett Grolemund of RStudio.
